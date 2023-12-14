@@ -9,10 +9,13 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.subsystems.Turret;
+import edu.wpi.first.wpilibj.smartdashboard.*;
 
 public class RobotContainer {
+
   private CommandXboxController controller;
   private Turret turret;
+  
   public RobotContainer() {
     controller = new CommandXboxController(0);
     turret = new Turret();
@@ -22,7 +25,8 @@ public class RobotContainer {
   }
 
   private void configureBindings() {
-    controller.rightTrigger(0.1).whileTrue(turret.setFlywheelOutput((controller.getRightTriggerAxis())));
+    //controller.rightTrigger(0.1).whileTrue(turret.setFlywheelOutput(() -> controller.getRightTriggerAxis()));
+    controller.rightTrigger(0.1).whileTrue(turret.setFlywheelVelocity(500));
     controller.leftTrigger(0.1).whileTrue(turret.setMagazineOutput(0.2));
     controller.povUp().whileTrue(turret.setHoodOutput(0.2));
     controller.povDown().whileTrue(turret.setHoodOutput(-0.2));

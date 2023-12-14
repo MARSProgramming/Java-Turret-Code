@@ -1,14 +1,20 @@
 package frc.robot.subsystems;
 
+import java.util.function.DoubleSupplier;
+
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.TalonFX;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 
+import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.wpilibj2.command.CommandBase;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants;
-import edu.wpi.first.wpilibj2.command.CommandBase;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.wpilibj.smartdashboard.*;
+
 
 public class Turret extends SubsystemBase {
     private TalonFX flywheelMaster;
@@ -16,22 +22,22 @@ public class Turret extends SubsystemBase {
     private TalonFX hood;
     private TalonSRX magazine;
     private TalonSRX turretMotor;
-    
+    private double flywheelVelocity; 
+
     public Turret() {
+        
         flywheelMaster = new TalonFX(Constants.TURRET_FRONT_FLYWHEEL_MOTOR);
         flywheelFollower = new TalonFX(Constants.TURRET_BACK_FLYWHEEL_MOTOR);
         hood = new TalonFX(Constants.TURRET_HOOD_MOTOR);
 
         magazine = new TalonSRX(Constants.TURRET_MAGAZINE);
         turretMotor = new TalonSRX(Constants.TURRET_MOTOR);
-
         flywheelMaster.configFactoryDefault();
         flywheelFollower.configFactoryDefault();
         hood.configFactoryDefault();
         magazine.configFactoryDefault();
         turretMotor.configFactoryDefault();
-
-        flywheelMaster.config_kP(0, 0);
+        flywheelMaster.config_kP(0, 0.5);
         flywheelMaster.config_kI(0,0); 
         flywheelMaster.config_kD(0,0);
         flywheelMaster.config_kF(0,0);
@@ -58,9 +64,10 @@ public class Turret extends SubsystemBase {
         flywheelFollower.follow(flywheelMaster);
     }
 
-    public CommandBase setFlywheelOutput(double percent) {
+    public CommandBase setFlywheelOutput(DoubleSupplier percent) {
+ 
         return runEnd(() -> {
-            flywheelMaster.set(ControlMode.PercentOutput, percent);
+            flywheelMaster.set(ControlMode.PercentOutput, percent.getAsDouble());
         },
         () -> {
             flywheelMaster.set(ControlMode.PercentOutput, 0);
@@ -69,8 +76,10 @@ public class Turret extends SubsystemBase {
     }
 
     public CommandBase setFlywheelVelocity(double velocity) {
+        flywheelVelocity = velocity; 
         return runEnd(() -> {
             flywheelMaster.set(ControlMode.Velocity, velocity);
+            flywheelFollower.set(ControlMode.Velocity,Constants.TURRET_FRONT_FLYWHEEL_MOTOR);
         },
         () -> {
             flywheelMaster.set(ControlMode.PercentOutput, 0);
@@ -129,4 +138,9 @@ public class Turret extends SubsystemBase {
         });
     }
 
+    @Override
+    public void periodic(){ 
+            SmartDashboard.putNumber("Flywheel Velocity", flywheelMaster.getSelectedSensorVelocity());
+            SmartDashboard.putNumber("Flywheel Error", (flywheelVelocity -flywheelMaster.getSelectedSensorVelocity())); 
+    }
 }
