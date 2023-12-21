@@ -7,13 +7,11 @@ import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.TalonFX;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 
-import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.math.controller.ProfiledPIDController;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandBase;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants;
-import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
-import edu.wpi.first.wpilibj.smartdashboard.*;
 
 
 public class Turret extends SubsystemBase {
@@ -22,7 +20,10 @@ public class Turret extends SubsystemBase {
     private TalonFX hood;
     private TalonSRX magazine;
     private TalonSRX turretMotor;
-    private double flywheelVelocity; 
+    private double hoodGearRatio = 15.0/85.0;
+    private double hoodNativePositionToRadians = 2 * Math.PI / 2048 * hoodGearRatio;
+    private double turretGearRatio = 1.0/100.0 * 180/40;
+    private double turretNativePositionToDegrees = 360.0 / 2048 * turretGearRatio;
 
     public Turret() {
         
@@ -37,31 +38,51 @@ public class Turret extends SubsystemBase {
         hood.configFactoryDefault();
         magazine.configFactoryDefault();
         turretMotor.configFactoryDefault();
-        flywheelMaster.config_kP(0, 0.5);
+        flywheelMaster.configClosedloopRamp(0.25);
+        flywheelMaster.config_kP(0, 0.1);
         flywheelMaster.config_kI(0,0); 
         flywheelMaster.config_kD(0,0);
-        flywheelMaster.config_kF(0,0);
+        flywheelMaster.config_kF(0,0.048);
         
-        hood.config_kP(0,0); 
+        turretMotor.setSelectedSensorPosition(0);
+        turretMotor.configForwardSoftLimitThreshold(Constants.TURRET_FORWARD_LIMIT / turretNativePositionToDegrees);
+        turretMotor.configForwardSoftLimitEnable(true);
+        turretMotor.configReverseSoftLimitThreshold(Constants.TURRET_REVERSE_LIMIT / turretNativePositionToDegrees);
+        turretMotor.configReverseSoftLimitEnable(true);
+        turretMotor.configPeakOutputForward(Constants.TURRET_FORWARD_PEAK_OUTPUT);
+        turretMotor.configPeakOutputReverse(Constants.TURRET_REVERSE_PEAK_OUTPUT);
+        turretMotor.config_kP(0, 0.3);
+        turretMotor.config_kI(0,0); 
+        turretMotor.config_kD(0,0);
+
+        hood.config_kP(0,0.25); 
         hood.config_kI(0,0); 
         hood.config_kD(0,0); 
+        hood.setSelectedSensorPosition(0);
         hood.configForwardSoftLimitThreshold(Constants.TURRET_HOOD_FORWARD_LIMIT);
         hood.configForwardSoftLimitEnable(true);
         hood.configReverseSoftLimitThreshold(Constants.TURRET_HOOD_REVERSE_LIMIT);
         hood.configReverseSoftLimitEnable(true);
+        hood.configPeakOutputForward(Constants.TURRET_HOOD_FORWARD_PEAK_OUTPUT);
+        hood.configPeakOutputReverse(Constants.TURRET_HOOD_REVERSE_PEAK_OUTPUT);
+
+        magazine.config_kP(0, 0.15);
+        magazine.config_kI(0,0); 
+        magazine.config_kD(0,0);
+        magazine.config_kF(0,0.11);
 
 
         flywheelMaster.setNeutralMode(NeutralMode.Coast);
         flywheelFollower.setNeutralMode(NeutralMode.Coast);
-
         turretMotor.setNeutralMode(NeutralMode.Brake);
         magazine.setNeutralMode(NeutralMode.Coast);
         hood.setNeutralMode(NeutralMode.Brake);
 
-        flywheelFollower.setInverted(false);
-        flywheelMaster.setInverted(false);
+        flywheelFollower.setInverted(true);
+        flywheelMaster.setInverted(true);
+        magazine.setSensorPhase(true);
 
-        flywheelFollower.follow(flywheelMaster);
+        //flywheelFollower.follow(flywheelMaster);
     }
 
     public CommandBase setFlywheelOutput(DoubleSupplier percent) {
@@ -76,10 +97,8 @@ public class Turret extends SubsystemBase {
     }
 
     public CommandBase setFlywheelVelocity(double velocity) {
-        flywheelVelocity = velocity; 
         return runEnd(() -> {
             flywheelMaster.set(ControlMode.Velocity, velocity);
-            flywheelFollower.set(ControlMode.Velocity,Constants.TURRET_FRONT_FLYWHEEL_MOTOR);
         },
         () -> {
             flywheelMaster.set(ControlMode.PercentOutput, 0);
@@ -99,32 +118,36 @@ public class Turret extends SubsystemBase {
 
     public CommandBase setHoodPosition(double position) {
         return runEnd(() -> {
-            hood.set(ControlMode.Position, position);
+            hood.set(ControlMode.Position, position / hoodNativePositionToRadians);
         },
         () -> {
             hood.set(ControlMode.PercentOutput, 0);
         });
     }
 
-    public CommandBase setTurretMotorOutput(double percent) {
+    public CommandBase setTurretOutput(double percent) {
         return runEnd(() -> {
             turretMotor.set(ControlMode.PercentOutput, percent);
-        }, () -> {
+        },
+        () -> {
+            turretMotor.set(ControlMode.PercentOutput, 0);
+        }
+        );
+    } 
+    
+
+    public CommandBase setTurretPosition(double position) {
+        return runEnd(() -> {
+            turretMotor.set(ControlMode.Position, position / turretNativePositionToDegrees);
+        },
+        () -> {
             turretMotor.set(ControlMode.PercentOutput, 0);
         });
     }
 
-    public CommandBase setTurretMotorVelocity(double velocity) {
+    public CommandBase setMagazineOutput(DoubleSupplier percent) {
         return runEnd(() -> {
-            turretMotor.set(ControlMode.PercentOutput, velocity);
-        }, () -> {
-            turretMotor.set(ControlMode.PercentOutput, 0);
-        });
-    }
-
-    public CommandBase setMagazineOutput(double percent) {
-        return runEnd(() -> {
-            magazine.set(ControlMode.PercentOutput, percent);
+            magazine.set(ControlMode.PercentOutput, percent.getAsDouble());
         }, () -> {
             magazine.set(ControlMode.PercentOutput, 0);
         });
@@ -132,15 +155,29 @@ public class Turret extends SubsystemBase {
 
     public CommandBase setMagazineVelocity(double velocity) {
         return runEnd(() -> {
-            magazine.set(ControlMode.PercentOutput, velocity);
+            magazine.set(ControlMode.Velocity, velocity);
         }, () -> {
             magazine.set(ControlMode.PercentOutput, 0);
         });
     }
 
+    public CommandBase testShoot(DoubleSupplier x, DoubleSupplier y){
+        return runEnd(() -> {
+            magazine.set(ControlMode.Velocity, 3000);
+            flywheelMaster.set(ControlMode.Velocity, 7000);
+            hood.set(ControlMode.Position, 9 / hoodNativePositionToRadians);
+        }, () -> {
+            magazine.set(ControlMode.PercentOutput, 0);
+            flywheelMaster.set(ControlMode.PercentOutput, 0);
+            hood.set(ControlMode.Position, 0);
+        });
+    }
+
     @Override
     public void periodic(){ 
-            SmartDashboard.putNumber("Flywheel Velocity", flywheelMaster.getSelectedSensorVelocity());
-            SmartDashboard.putNumber("Flywheel Error", (flywheelVelocity -flywheelMaster.getSelectedSensorVelocity())); 
+        SmartDashboard.putNumber("Flywheel Velocity", flywheelMaster.getSelectedSensorVelocity());
+        SmartDashboard.putNumber("Magazine Velocity", magazine.getSelectedSensorVelocity());
+        SmartDashboard.putNumber("Turret Position", turretMotor.getSelectedSensorPosition() * turretNativePositionToDegrees);
+        SmartDashboard.putNumber("Hood Position", hood.getSelectedSensorPosition() * hoodNativePositionToRadians);
     }
 }
