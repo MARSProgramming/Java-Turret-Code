@@ -9,9 +9,12 @@ import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.CommandBase;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants;
+
 
 
 public class Turret extends SubsystemBase {
@@ -33,6 +36,10 @@ public class Turret extends SubsystemBase {
 
         magazine = new TalonSRX(Constants.TURRET_MAGAZINE);
         turretMotor = new TalonSRX(Constants.TURRET_MOTOR);
+
+        Timer myTimer = new Timer();
+        myTimer.reset();
+
         flywheelMaster.configFactoryDefault();
         flywheelFollower.configFactoryDefault();
         hood.configFactoryDefault();
@@ -71,6 +78,8 @@ public class Turret extends SubsystemBase {
         magazine.config_kD(0,0);
         magazine.config_kF(0,0.11);
 
+        hood.configPeakOutputForward(0.1);
+        hood.configPeakOutputReverse(0.1);
 
         flywheelMaster.setNeutralMode(NeutralMode.Coast);
         flywheelFollower.setNeutralMode(NeutralMode.Coast);
@@ -108,6 +117,7 @@ public class Turret extends SubsystemBase {
     public CommandBase setHoodOutput(double percent) {
         return runEnd(() -> {
             hood.set(ControlMode.PercentOutput, percent);
+            
         },
         () -> {
             hood.set(ControlMode.PercentOutput, 0);
@@ -145,11 +155,27 @@ public class Turret extends SubsystemBase {
         });
     }
 
-    public CommandBase setMagazineOutput(DoubleSupplier percent) {
+    public CommandBase setMagazineOutput(double percent) {
         return runEnd(() -> {
-            magazine.set(ControlMode.PercentOutput, percent.getAsDouble());
+            magazine.set(ControlMode.PercentOutput, percent);
         }, () -> {
             magazine.set(ControlMode.PercentOutput, 0);
+        });
+    }
+
+    public CommandBase shootball(double magazinePercent, double flywheelPercent) {
+        return runEnd(()-> {
+            magazine.set(ControlMode.PercentOutput, magazinePercent);
+            flywheelMaster.set(ControlMode.PercentOutput, flywheelPercent);
+            if (hood.getSelectedSensorPosition() < 500) {
+                hood.set(ControlMode.PercentOutput, 0.1);
+            } else {
+                hood.set(ControlMode.PercentOutput, 0);
+            }
+        }, () -> {
+            magazine.set(ControlMode.PercentOutput, 0);
+            flywheelMaster.set(ControlMode.PercentOutput, 0);
+            
         });
     }
 

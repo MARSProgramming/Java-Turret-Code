@@ -25,21 +25,16 @@ public class RobotContainer {
   }
 
   private void configureBindings() {
-    controller.rightBumper().whileTrue(turret.setFlywheelOutput(() -> controller.getRightTriggerAxis()));
-    controller.x().whileTrue(turret.setTurretOutput(-0.3));
-    controller.b().whileTrue(turret.setTurretOutput(0.3));
-    controller.y().whileTrue(turret.setTurretPosition(0));
-    controller.leftBumper().whileTrue(turret.setMagazineOutput(() -> controller.getLeftTriggerAxis()));
-    controller.a().whileTrue(turret.setTurretPosition(90));
-    controller.povUp().whileTrue(turret.setHoodOutput(0.35));
-    controller.povDown().whileTrue(turret.setHoodOutput(-0.35));
-    controller.povLeft().whileTrue(turret.setHoodPosition(0));
-    controller.povRight().whileTrue(turret.setHoodPosition(5));
-    controller.rightTrigger(0.1).whileTrue(turret.testShoot(() -> controller.getLeftX(), () -> controller.getLeftY()));
+    controller.rightTrigger(0.1).whileTrue(turret.shootball(0.7, 0.4));
+    controller.leftTrigger(0.1).whileTrue(turret.setMagazineOutput(0.3));
+    controller.povUp().whileTrue(turret.setHoodOutput(0.2));
+    controller.povDown().whileTrue(turret.setHoodOutput(-0.2));
+    controller.povLeft().whileTrue(turret.setHoodPosition(4000));
 
   }
 
   public Command getAutonomousCommand() {
     return Commands.print("No autonomous command configured");
   }
+
 }
